@@ -69,12 +69,14 @@ public class USSDToSMS extends  TimerTask implements Runnable {
 		try {
 			conn = connDB();
 			
-			setTime();
+			//setTime();
 
 			//更新需要處理的部分
 			String sql = "UPdate USSDTOSMS Set status = 1 "
-					+ "where CREATETIME >= to_date('"+preTimeS+"','yyyyMMddhh24miss') "
-					+ "and CREATETIME <= to_date('"+nowTimeS+"','yyyyMMddhh24miss') and status=0 ";
+					+ "where status=0 "
+					//+ "and CREATETIME >= to_date('"+preTimeS+"','yyyyMMddhh24miss') "
+					//+ "and CREATETIME <= to_date('"+nowTimeS+"','yyyyMMddhh24miss') "
+					;
 			
 			//撈取需要處理的資料
 			String sql2 = "select SMSID,PHONENUMBER,IMSI,SMSCONTENT,CREATETIME,PROCESSTIME,STATUS "
@@ -82,8 +84,10 @@ public class USSDToSMS extends  TimerTask implements Runnable {
 					+ "where status = 1 ";
 			
 			st = conn.createStatement();
+			//logger.debug("update 0 to 1 : "+sql);
 			st.execute(sql);
 			
+			//logger.debug("select SMS sattus is 1 : "+sql2);
 			rs = st.executeQuery(sql2);
 			
 			String completes = "";
