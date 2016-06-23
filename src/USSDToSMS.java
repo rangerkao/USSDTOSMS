@@ -16,8 +16,11 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 import java.util.Timer;
@@ -28,12 +31,12 @@ import org.apache.log4j.PropertyConfigurator;
 
 
 public class USSDToSMS extends  TimerTask implements Runnable {
-
+	static String mailContent = "";
 	static Logger logger;
 	static Properties props;
 	static boolean testMod = true;
-	
-	public static void main(String[] args) {
+	static Connection conn = null;
+	public static void main(String[] args) throws ClassNotFoundException, SQLException {
 		
 		props = getProperties();
 		PropertyConfigurator.configure(props);
@@ -51,24 +54,57 @@ public class USSDToSMS extends  TimerTask implements Runnable {
 			period = Long.parseLong(args[0]);
 
 		logger.info("Execute period "+period+" millisecond");
-		
+		conn = connDB();
 		Timer timer =new Timer();
 		//預設每5秒啟動一次
 		timer.schedule(new USSDToSMS(),0,period );
 		
+		
+		Timer mailTimer = new Timer();
+		int mailTime = 10*60*1000;
+		mailTimer.schedule(new mailControl(),mailTime,mailTime);
+
+		
+		if(conn!=null)
+			conn.close();
 	}
+	
+	static class mailControl extends  TimerTask{
+
+		@Override
+		public void run() {
+			
+			synchronized (mailContent) {
+				logger.info("mail thread running...");
+				if(!"".equals(mailContent)){
+					sendMail(mailContent);
+					mailContent = "";
+				}
+			}
+		}
+	}
+	
+	
 	public void run() {
 		process();
 	}
 	
 	public void process(){
 		logger.info("program srart...");
-		Connection conn = null;
 		Statement st = null;
 		ResultSet rs = null;
+		
 		try {
-			conn = connDB();
-			
+			try {
+				st = conn.createStatement();
+			} catch (SQLException e1) {
+				//錯誤記錄後重連
+				logger.error("After connection error, tring connection",e1);
+				if(conn!=null)
+					conn.close();
+				conn = connDB();
+				st = conn.createStatement();
+			}
 			//setTime();
 
 			//更新需要處理的部分
@@ -83,7 +119,7 @@ public class USSDToSMS extends  TimerTask implements Runnable {
 					+ "from USSDTOSMS A "
 					+ "where status = 1 ";
 			
-			st = conn.createStatement();
+			
 			//logger.debug("update 0 to 1 : "+sql);
 			st.execute(sql);
 			
@@ -130,7 +166,7 @@ public class USSDToSMS extends  TimerTask implements Runnable {
 			logger.info("program end...");
 			lastTime = nowTime;
 			
-		} catch (ClassNotFoundException e) {
+		} catch (ClassNotFoundException e){
 			errorProccess(e);
 		} catch (SQLException e) {
 			errorProccess(e);
@@ -140,8 +176,6 @@ public class USSDToSMS extends  TimerTask implements Runnable {
 					rs.close();
 				if(st!=null)
 					st.close();
-				if(conn!=null)
-					conn.close();
 			} catch (SQLException e) {
 				errorProccess(e);
 			}
@@ -165,10 +199,13 @@ public class USSDToSMS extends  TimerTask implements Runnable {
 		}else{
 			logger.error(msg);
 		}		
-		
-		sendMail(msg + "\n" + errorMag);
-		
+		synchronized (mailContent) {
+			mailContent = msg + "\n" + errorMag+"\n from location "+"192.168.10.199 at "+new Date()+"\n\n\n";
+		}
+		//sendMail(msg + "\n" + errorMag);
 	};
+	
+	
 	public void sendSMS(String phoneNumber,String content) throws Exception{
 		
 		if(testMod){
@@ -247,7 +284,6 @@ public class USSDToSMS extends  TimerTask implements Runnable {
 			response.append(inputLine);
 		}
 		in.close();
- 
 		//print result
 		return responseCode;
 	}
@@ -284,7 +320,7 @@ public class USSDToSMS extends  TimerTask implements Runnable {
 		return result;
 	}
 	
-	private void sendMail(String msg){
+	static private void sendMail(String msg){
 		String ip ="";
 		try {
 			ip = InetAddress.getLocalHost().getHostAddress();
@@ -329,7 +365,7 @@ public class USSDToSMS extends  TimerTask implements Runnable {
 		return result;
 	}
 	
-	public Connection connDB() throws ClassNotFoundException, SQLException {
+	public static Connection connDB() throws ClassNotFoundException, SQLException {
 		Connection conn = null;
 
 			Class.forName("oracle.jdbc.driver.OracleDriver");
