@@ -200,7 +200,7 @@ public class USSDToSMS extends  TimerTask implements Runnable {
 			logger.error(msg);
 		}		
 		synchronized (mailContent) {
-			mailContent = msg + "\n" + errorMag+"\n from location "+"192.168.10.199 at "+new Date()+"\n\n\n";
+			mailContent += msg + "\n" + errorMag+"\n from location "+"192.168.10.199 at "+new Date()+"\n\n\n";
 		}
 		//sendMail(msg + "\n" + errorMag);
 	};
