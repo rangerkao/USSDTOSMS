@@ -215,7 +215,8 @@ public class USSDToSMS extends  TimerTask implements Runnable {
 			phoneNumber = "+0000"+phoneNumber.replace("+", "");
 		}
 
-		String URL = "http://192.168.10.125:8800/Send%20Text%20Message.htm";
+		String URL = "http://10.42.200.100:8800/Send%20Text%20Message.htm";
+		//String URL = "http://192.168.10.125:8800/Send%20Text%20Message.htm";
 		//test
 		//String URL = "http://192.168.10.100:8800/Send%20Text%20Message.htm";
 		
